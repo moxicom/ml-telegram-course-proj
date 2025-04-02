@@ -1,0 +1,1 @@
+from .bot_config import AD_MESSAGES, BOT_CONFIG
