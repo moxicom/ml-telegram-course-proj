@@ -152,6 +152,12 @@ def maybe_reply_with_advertising_hint(text: str):
             logging.getLogger().info(f"adv hint search for {predicted}, distance: {distance}")
             if distance / len(example) < 0.3:  # Порог схожести
                 return advertising_responses[i]  # Возвращаем соответствующий ответ
+    if predicted == "neutral":
+        for i, example in enumerate(advertising_texts):
+            distance = nltk.edit_distance(text.lower(), example.lower())
+            logging.getLogger().info(f"adv hint search for {predicted}, distance: {distance}")
+            if distance / len(example) < 0.3:  # Порог схожести
+                return advertising_responses[i]  # Возвращаем соответствующий ответ
     return None
 
 
