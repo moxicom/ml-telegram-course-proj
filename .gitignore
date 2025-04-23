@@ -1,4 +1,4 @@
-datasets/dialogues.txt
+data/dialogues.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
