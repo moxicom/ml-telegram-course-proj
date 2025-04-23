@@ -3,3 +3,6 @@ env:
 
 act-env:
 	sh venv/bin/activate
+
+unzip-all:
+	unzip data/dialogues.txt.zip -d data/

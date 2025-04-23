@@ -1,5 +1,4 @@
 # ./app/bot.py
-
 import random
 import nltk
 import pickle
@@ -14,7 +13,7 @@ from dotenv import load_dotenv
 from data.config import CONFIG
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from utils import clear_phrase, is_meaningful_text, extract_age, extract_toy_name, extract_toy_category, extract_price, is_age_in_range, Stats, logger
+from utils import clear_phrase, is_meaningful_text, extract_dish_name, extract_dish_category, extract_price, Stats, logger
 
 # Загрузка токена
 load_dotenv()
@@ -66,11 +65,10 @@ def classify_intent(replica):
 
 # Получение ответа
 def get_answer_by_intent(intent, replica, context):
-    toy_name = context.user_data.get('current_toy')
+    dish_name = context.user_data.get('current_dish')
     last_response = context.user_data.get('last_bot_response', '')
     last_intent = context.user_data.get('last_intent', '')
-    toy_category = extract_toy_category(replica)
-    age = extract_age(replica)
+    dish_category = extract_dish_category(replica)
     price = extract_price(replica)
 
     if intent in CONFIG['intents']:
@@ -79,124 +77,105 @@ def get_answer_by_intent(intent, replica, context):
             return None
         answer = random.choice(responses)
 
-        if intent in ['toy_price', 'toy_availability', 'toy_info', 'order_toy']:
-            if not toy_name:
+        if intent in ['dish_price', 'dish_availability', 'dish_info', 'order_dish']:
+            if not dish_name:
                 if last_response and 'Кстати, у нас есть' in last_response:
-                    toy_name = extract_toy_name(last_response)
-                    context.user_data['current_toy'] = toy_name
-                elif toy_category:
-                    suitable_toys = [toy for toy, data in CONFIG['toys'].items() if toy_category in data.get('categories', [])]
-                    if suitable_toys:
-                        toy_name = random.choice(suitable_toys)
-                        context.user_data['current_toy'] = toy_name
+                    dish_name = extract_dish_name(last_response)
+                    context.user_data['current_dish'] = dish_name
+                elif dish_category:
+                    suitable_dishes = [dish for dish, data in CONFIG['dishes'].items() if dish_category in data.get('categories', [])]
+                    if suitable_dishes:
+                        dish_name = random.choice(suitable_dishes)
+                        context.user_data['current_dish'] = dish_name
                         context.user_data['state'] = 'WAITING_FOR_INTENT'
-                        return f"Из {toy_category} есть {toy_name}. Хотите узнать цену, описание или наличие?"
-                elif last_intent == 'toy_types':
+                        return f"Из {dish_category} есть {dish_name}. Хотите узнать цену, состав или наличие?"
+                elif last_intent == 'menu_types':
                     for hist in context.user_data.get('history', [])[::-1]:
-                        hist_toy = extract_toy_name(hist)
-                        if hist_toy:
-                            toy_name = hist_toy
-                            context.user_data['current_toy'] = toy_name
+                        hist_dish = extract_dish_name(hist)
+                        if hist_dish:
+                            dish_name = hist_dish
+                            context.user_data['current_dish'] = dish_name
                             break
-                        hist_category = extract_toy_category(hist)
+                        hist_category = extract_dish_category(hist)
                         if hist_category:
-                            suitable_toys = [toy for toy, data in CONFIG['toys'].items() if hist_category in data.get('categories', [])]
-                            if suitable_toys:
-                                toy_name = random.choice(suitable_toys)
-                                context.user_data['current_toy'] = toy_name
+                            suitable_dishes = [dish for dish, data in CONFIG['dishes'].items() if hist_category in data.get('categories', [])]
+                            if suitable_dishes:
+                                dish_name = random.choice(suitable_dishes)
+                                context.user_data['current_dish'] = dish_name
                                 break
-                if not toy_name:
-                    context.user_data['state'] = 'WAITING_FOR_TOY'
-                    return "Какую игрушку или категорию вы имеете в виду?"
-            if toy_name in CONFIG['toys']:
-                answer = answer.replace('[toy_name]', toy_name)
-                answer = answer.replace('[price]', str(CONFIG['toys'][toy_name]['price']))
-                answer = answer.replace('[age]', CONFIG['toys'][toy_name]['age'])
-                answer = answer.replace('[description]', CONFIG['toys'][toy_name].get('description', 'интересная игрушка'))
+                if not dish_name:
+                    context.user_data['state'] = 'WAITING_FOR_DISH'
+                    return "Какое блюдо или категорию вы имеете в виду?"
+            if dish_name in CONFIG['dishes']:
+                answer = answer.replace('[dish_name]', dish_name)
+                answer = answer.replace('[price]', str(CONFIG['dishes'][dish_name]['price']))
+                answer = answer.replace('[description]', CONFIG['dishes'][dish_name].get('description', 'вкусное блюдо'))
                 answer += f" Что ещё интересует?"
             else:
-                return "Извините, такой игрушки нет в каталоге."
+                return "Извините, такого блюда нет в меню."
 
-        elif intent == 'toy_recommendation':
-            if age:
-                suitable_toys = [toy for toy, data in CONFIG['toys'].items() if is_age_in_range(age, data['age'])]
-                if suitable_toys:
-                    toy_name = random.choice(suitable_toys)
-                    context.user_data['current_toy'] = toy_name
-                    answer = answer.replace('[toy_name]', toy_name).replace('[age]', age)
-                    answer += f" Хотите узнать цену или описание {toy_name}?"
-                else:
-                    return f"Извините, у нас нет игрушек для возраста {age} лет."
+        elif intent == 'dish_recommendation':
+            suitable_dishes = list(CONFIG['dishes'].keys())
+            if suitable_dishes:
+                dish_name = random.choice(suitable_dishes)
+                context.user_data['current_dish'] = dish_name
+                answer = answer.replace('[dish_name]', dish_name)
+                answer += f" Хотите узнать цену или состав {dish_name}?"
             else:
-                context.user_data['state'] = 'WAITING_FOR_AGE'
-                return "Для какого возраста нужна игрушка?"
+                return "Извините, в меню пока нет блюд."
 
-        elif intent == 'toy_types':
+        elif intent == 'menu_types':
             categories = random.sample(CONFIG['categories'], min(3, len(CONFIG['categories'])))
-            toys = random.sample(list(CONFIG['toys'].keys()), min(2, len(CONFIG['toys'])))
-            answer = f"У нас есть {', '.join(categories)} и игрушки вроде {', '.join(toys)}. Что интересно?"
-            context.user_data['current_toy'] = None
-
-        elif intent == 'compare_toys':
-            toy1 = random.choice(list(CONFIG['toys'].keys()))
-            toy2 = random.choice([t for t in CONFIG['toys'].keys() if t != toy1])
-            answer = answer.replace('[toy1]', toy1).replace('[toy2]', toy2)
-            context.user_data['current_toy'] = toy1
-            answer += f" Что интересует: {toy1} или {toy2}?"
+            dishes = random.sample(list(CONFIG['dishes'].keys()), min(2, len(CONFIG['dishes'])))
+            answer = f"У нас есть {', '.join(categories)} и блюда вроде {', '.join(dishes)}. Что интересно?"
+            context.user_data['current_dish'] = None
 
         elif intent == 'yes':
             if last_intent == 'hello':
                 categories = random.sample(CONFIG['categories'], min(3, len(CONFIG['categories'])))
                 answer = f"Отлично! У нас есть {', '.join(categories)}. Что хотите узнать?"
-            elif last_intent in ['toy_price', 'toy_info', 'toy_availability', 'order_toy']:
-                if toy_name:
-                    answer = f"Цена на {toy_name} — {CONFIG['toys'][toy_name]['price']} рублей. Что ещё интересует?"
+            elif last_intent in ['dish_price', 'dish_info', 'dish_availability', 'order_dish']:
+                if dish_name:
+                    answer = f"Цена на {dish_name} — {CONFIG['dishes'][dish_name]['price']} рублей. Что ещё интересует?"
                 else:
-                    answer = "Назови игрушку, чтобы я рассказал подробнее!"
-            elif last_intent == 'toy_types':
-                toys = random.sample(list(CONFIG['toys'].keys()), min(2, len(CONFIG['toys'])))
-                answer = f"У нас есть {', '.join(toys)}. Назови одну, чтобы узнать больше!"
+                    answer = "Назови блюдо, чтобы я рассказал подробнее!"
+            elif last_intent == 'menu_types':
+                dishes = random.sample(list(CONFIG['dishes'].keys()), min(2, len(CONFIG['dishes'])))
+                answer = f"У нас есть {', '.join(dishes)}. Назови одно, чтобы узнать больше!"
             elif last_intent == 'offtopic':
-                answer = "Хорошо, давай продолжим! Хочешь узнать про игрушки?"
+                answer = "Хорошо, давай продолжим! Хочешь узнать про блюда?"
             else:
-                answer = "Хорошо, что интересует? Игрушки, цены или что-то ещё?"
+                answer = "Хорошо, что интересует? Блюда, цены или что-то ещё?"
 
         elif intent == 'no':
-            context.user_data['current_toy'] = None
+            context.user_data['current_dish'] = None
             context.user_data['state'] = 'NONE'
-            answer = "Хорошо, какую игрушку обсудим теперь?"
+            answer = "Хорошо, какое блюдо обсудим теперь?"
 
-        elif intent == 'filter_toys':
-            if price and age:
-                suitable_toys = [toy for toy, data in CONFIG['toys'].items() if data['price'] <= price and is_age_in_range(age, data['age'])]
-                if suitable_toys:
-                    toys_list = ', '.join(suitable_toys)
-                    answer = f"Для возраста {age} лет и до {price} рублей есть: {toys_list}."
+        elif intent == 'filter_dishes':
+            if price:
+                suitable_dishes = [dish for dish, data in CONFIG['dishes'].items() if data['price'] <= price]
+                if suitable_dishes:
+                    dishes_list = ', '.join(suitable_dishes)
+                    answer = f"До {price} рублей есть: {dishes_list}."
                 else:
-                    answer = f"Извините, нет игрушек для возраста {age} лет и до {price} рублей."
-            elif price:
-                suitable_toys = [toy for toy, data in CONFIG['toys'].items() if data['price'] <= price]
-                if suitable_toys:
-                    toys_list = ', '.join(suitable_toys)
-                    answer = f"До {price} рублей есть: {toys_list}."
-                else:
-                    answer = f"Извините, нет игрушек до {price} рублей."
-            elif age:
-                suitable_toys = [toy for toy, data in CONFIG['toys'].items() if is_age_in_range(age, data['age'])]
-                if suitable_toys:
-                    toys_list = ', '.join(suitable_toys)
-                    answer = f"Для возраста {age} лет есть: {toys_list}."
-                    context.user_data['current_toy'] = random.choice(suitable_toys)
+                    answer = f"Извините, нет блюд до {price} рублей."
+            elif dish_category:
+                suitable_dishes = [dish for dish, data in CONFIG['dishes'].items() if dish_category in data.get('categories', [])]
+                if suitable_dishes:
+                    dishes_list = ', '.join(suitable_dishes)
+                    answer = f"В категории {dish_category} есть: {dishes_list}."
+                    context.user_data['current_dish'] = random.choice(suitable_dishes)
                     context.user_data['state'] = 'WAITING_FOR_INTENT'
                 else:
-                    answer = f"Извините, нет игрушек для возраста {age} лет."
+                    answer = f"Извините, нет блюд в категории {dish_category}."
             else:
-                answer = "Укажите возраст или цену для фильтрации."
+                answer = "Укажите цену или категорию для фильтрации."
 
         # Реклама
-        if intent in ['hello', 'toy_types'] and random.random() < 0.2:
-            ad_toy = random.choice([t for t in CONFIG['toys'].keys() if t != toy_name])
-            answer += f" Кстати, у нас есть {ad_toy} — отличный выбор для детей {CONFIG['toys'][ad_toy]['age']}!"
+        if intent in ['hello', 'menu_types'] and random.random() < 0.2:
+            ad_dish = random.choice([d for d in CONFIG['dishes'].keys() if d != dish_name])
+            answer += f" Кстати, у нас есть {ad_dish} — отличный выбор для вкусного ужина!"
 
         context.user_data['last_intent'] = intent
         return answer
@@ -216,8 +195,8 @@ def generate_answer(replica, context):
         answer = answers[best_idx]
         logger.info(f"Found in dialogues.txt: replica='{replica}', answer='{answer}', similarity={similarities[best_idx]}")
         if random.random() < 0.3:
-            ad_toy = random.choice(list(CONFIG['toys'].keys()))
-            answer += f" Кстати, у нас есть {ad_toy} — отличный выбор для детей {CONFIG['toys'][ad_toy]['age']}!"
+            ad_dish = random.choice(list(CONFIG['dishes'].keys()))
+            answer += f" Кстати, у нас есть {ad_dish} — очень вкусно!"
         context.user_data['last_intent'] = 'offtopic'
         return answer
     logger.info(f"No match in dialogues.txt for replica='{replica}'")
@@ -225,16 +204,16 @@ def generate_answer(replica, context):
 
 # Заглушка
 def get_failure_phrase():
-    toy_name = random.choice(list(CONFIG['toys'].keys()))
-    return random.choice(CONFIG['failure_phrases']).replace('[toy_name]', toy_name)
+    dish_name = random.choice(list(CONFIG['dishes'].keys()))
+    return random.choice(CONFIG['failure_phrases']).replace('[dish_name]', dish_name)
 
 # Основная логика
 def bot(replica, context):
     stats = Stats(context)
     if 'state' not in context.user_data:
         context.user_data['state'] = 'NONE'
-    if 'current_toy' not in context.user_data:
-        context.user_data['current_toy'] = None
+    if 'current_dish' not in context.user_data:
+        context.user_data['current_dish'] = None
     if 'last_bot_response' not in context.user_data:
         context.user_data['last_bot_response'] = None
     if 'last_intent' not in context.user_data:
@@ -251,17 +230,17 @@ def bot(replica, context):
     # Проверка на несуразный текст
     if not is_meaningful_text(replica):
         context.user_data['state'] = 'NONE'
-        context.user_data['current_toy'] = None
+        context.user_data['current_dish'] = None
         answer = get_failure_phrase()
         context.user_data['last_bot_response'] = answer
         stats.add('failure', replica, answer, context)
         return answer
 
-    # Проверка возраста и цены
-    age = extract_age(replica)
+    # Проверка цены или категории
     price = extract_price(replica)
-    if age or price:
-        intent = 'filter_toys'
+    dish_category = extract_dish_category(replica)
+    if price or dish_category:
+        intent = 'filter_dishes'
         answer = get_answer_by_intent(intent, replica, context)
         if answer:
             context.user_data['last_bot_response'] = answer
@@ -269,54 +248,34 @@ def bot(replica, context):
             return answer
 
     # Обработка состояния
-    if state == 'WAITING_FOR_TOY':
-        toy_name = extract_toy_name(replica)
-        if toy_name:
-            context.user_data['current_toy'] = toy_name
+    if state == 'WAITING_FOR_DISH':
+        dish_name = extract_dish_name(replica)
+        if dish_name:
+            context.user_data['current_dish'] = dish_name
             context.user_data['state'] = 'WAITING_FOR_INTENT'
-            answer = f"Вы имеете в виду {toy_name}? Хотите узнать цену, описание или наличие?"
+            answer = f"Вы имеете в виду {dish_name}? Хотите узнать цену, состав или наличие?"
             context.user_data['last_bot_response'] = answer
             stats.add('intent', replica, answer, context)
             return answer
-        toy_category = extract_toy_category(replica)
-        if toy_category:
-            suitable_toys = [toy for toy, data in CONFIG['toys'].items() if toy_category in data.get('categories', [])]
-            if suitable_toys:
-                toy_name = random.choice(suitable_toys)
-                context.user_data['current_toy'] = toy_name
+        dish_category = extract_dish_category(replica)
+        if dish_category:
+            suitable_dishes = [dish for dish, data in CONFIG['dishes'].items() if dish_category in data.get('categories', [])]
+            if suitable_dishes:
+                dish_name = random.choice(suitable_dishes)
+                context.user_data['current_dish'] = dish_name
                 context.user_data['state'] = 'WAITING_FOR_INTENT'
-                answer = f"Из {toy_category} есть {toy_name}. Хотите узнать цену, описание или наличие?"
+                answer = f"Из {dish_category} есть {dish_name}. Хотите узнать цену, состав или наличие?"
                 context.user_data['last_bot_response'] = answer
                 stats.add('intent', replica, answer, context)
                 return answer
-        answer = "Пожалуйста, уточните название игрушки или категорию."
-        context.user_data['last_bot_response'] = answer
-        stats.add('failure', replica, answer, context)
-        return answer
-
-    if state == 'WAITING_FOR_AGE':
-        if age:
-            context.user_data['state'] = 'NONE'
-            suitable_toys = [toy for toy, data in CONFIG['toys'].items() if is_age_in_range(age, data['age'])]
-            if suitable_toys:
-                toy_name = random.choice(suitable_toys)
-                context.user_data['current_toy'] = toy_name
-                answer = f"Для возраста {age} лет советую {toy_name}! Хотите узнать цену или описание?"
-                context.user_data['last_bot_response'] = answer
-                stats.add('intent', replica, answer, context)
-                return answer
-            answer = f"Извините, нет игрушек для возраста {age} лет. Попробуйте другой возраст."
-            context.user_data['last_bot_response'] = answer
-            stats.add('failure', replica, answer, context)
-            return answer
-        answer = "Укажите возраст, например, '5 лет'."
+        answer = "Пожалуйста, уточните название блюда или категорию."
         context.user_data['last_bot_response'] = answer
         stats.add('failure', replica, answer, context)
         return answer
 
     if state == 'WAITING_FOR_INTENT':
         intent = classify_intent(replica)
-        if intent in ['toy_price', 'toy_availability', 'toy_info', 'order_toy']:
+        if intent in ['dish_price', 'dish_availability', 'dish_info', 'order_dish']:
             context.user_data['state'] = 'NONE'
             answer = get_answer_by_intent(intent, replica, context)
             if answer:
@@ -324,49 +283,49 @@ def bot(replica, context):
                 stats.add('intent', replica, answer, context)
                 return answer
         if intent == 'yes':
-            toy_name = context.user_data.get('current_toy')
-            if toy_name:
+            dish_name = context.user_data.get('current_dish')
+            if dish_name:
                 context.user_data['state'] = 'NONE'
-                answer = f"Цена на {toy_name} — {CONFIG['toys'][toy_name]['price']} рублей. Что ещё интересует?"
+                answer = f"Цена на {dish_name} — {CONFIG['dishes'][dish_name]['price']} рублей. Что ещё интересует?"
                 context.user_data['last_bot_response'] = answer
                 stats.add('intent', replica, answer, context)
                 return answer
         if intent == 'no':
-            context.user_data['current_toy'] = None
+            context.user_data['current_dish'] = None
             context.user_data['state'] = 'NONE'
-            answer = "Хорошо, какую игрушку обсудим теперь?"
+            answer = "Хорошо, какое блюдо обсудим теперь?"
             context.user_data['last_bot_response'] = answer
             stats.add('intent', replica, answer, context)
             return answer
-        toy_name = context.user_data.get('current_toy', 'игрушку')
-        answer = f"Что хотите узнать про {toy_name}: цену, описание или наличие?"
+        dish_name = context.user_data.get('current_dish', 'блюдо')
+        answer = f"Что хотите узнать про {dish_name}: цену, состав или наличие?"
         context.user_data['last_bot_response'] = answer
         stats.add('failure', replica, answer, context)
         return answer
 
-    # Проверка игрушки
-    toy_name = extract_toy_name(replica)
-    if toy_name:
-        context.user_data['current_toy'] = toy_name
+    # Проверка блюда
+    dish_name = extract_dish_name(replica)
+    if dish_name:
+        context.user_data['current_dish'] = dish_name
         context.user_data['state'] = 'WAITING_FOR_INTENT'
-        answer = f"Вы имеете в виду {toy_name}? Хотите узнать цену, описание или наличие?"
+        answer = f"Вы имеете в виду {dish_name}? Хотите узнать цену, состав или наличие?"
         context.user_data['last_bot_response'] = answer
         stats.add('intent', replica, answer, context)
         return answer
 
     # Проверка категории
-    toy_category = extract_toy_category(replica)
-    if toy_category:
-        suitable_toys = [toy for toy, data in CONFIG['toys'].items() if toy_category in data.get('categories', [])]
-        if suitable_toys:
-            toy_name = random.choice(suitable_toys)
-            context.user_data['current_toy'] = toy_name
+    dish_category = extract_dish_category(replica)
+    if dish_category:
+        suitable_dishes = [dish for dish, data in CONFIG['dishes'].items() if dish_category in data.get('categories', [])]
+        if suitable_dishes:
+            dish_name = random.choice(suitable_dishes)
+            context.user_data['current_dish'] = dish_name
             context.user_data['state'] = 'WAITING_FOR_INTENT'
-            answer = f"Из {toy_category} есть {toy_name}. Хотите узнать цену, описание или наличие?"
+            answer = f"Из {dish_category} есть {dish_name}. Хотите узнать цену, состав или наличие?"
             context.user_data['last_bot_response'] = answer
             stats.add('intent', replica, answer, context)
             return answer
-        answer = f"У нас нет игрушек в категории {toy_category}. Попробуйте другую категорию!"
+        answer = f"У нас нет блюд в категории {dish_category}. Попробуйте другую категорию!"
         context.user_data['last_bot_response'] = answer
         stats.add('failure', replica, answer, context)
         return answer
@@ -486,4 +445,3 @@ def run_bot():
 
 if __name__ == '__main__':
     run_bot()
-    

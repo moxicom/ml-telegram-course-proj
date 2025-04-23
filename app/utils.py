@@ -1,5 +1,4 @@
 # ./app/utils.py
-
 import logging
 import nltk
 from rapidfuzz import process, fuzz
@@ -23,38 +22,22 @@ def is_meaningful_text(text):
     words = text.split()
     return any(len(word) > 2 and all(c in 'абвгдеёжзийклмнопрстуфхцчшщъыьэюя' for c in word) for word in words)
 
-# Извлечение возраста
-def extract_age(replica):
-    replica = clear_phrase(replica)
-    logger.info(f"Extracting age from: '{replica}'")
-    words = replica.split()
-    for i, word in enumerate(words):
-        if word.isdigit():
-            logger.info(f"Found age: {word}")
-            return word
-        elif word in ['год', 'года', 'лет']:
-            if i > 0 and words[i - 1].isdigit():
-                logger.info(f"Found age: {words[i - 1]}")
-                return words[i - 1]
-    logger.info("Age not found")
-    return None
-
-# Извлечение игрушки
-def extract_toy_name(replica):
+# Извлечение блюда
+def extract_dish_name(replica):
     replica = clear_phrase(replica)
     if not replica:
         return None
-    for toy, data in CONFIG['toys'].items():
-        if toy.lower() in replica or any(syn.lower() in replica for syn in data.get('synonyms', [])):
-            return toy
-        candidates = [toy] + data.get('synonyms', [])
+    for dish, data in CONFIG['dishes'].items():
+        if dish.lower() in replica or any(syn.lower() in replica for syn in data.get('synonyms', [])):
+            return dish
+        candidates = [dish] + data.get('synonyms', [])
         best_match = process.extractOne(replica, candidates, scorer=fuzz.partial_ratio)
         if best_match and best_match[1] > 85:
-            return toy
+            return dish
     return None
 
 # Извлечение категории
-def extract_toy_category(replica):
+def extract_dish_category(replica):
     replica = clear_phrase(replica)
     if not replica:
         return None
@@ -75,23 +58,6 @@ def extract_price(replica):
         if word.isdigit():
             return int(word)
     return None
-
-# Проверка возраста в диапазоне
-def is_age_in_range(age, age_range):
-    try:
-        age = int(age)
-        if '-' in age_range:
-            min_age, max_age = age_range.split('-')
-            min_age = int(min_age)
-            max_age = int(max_age) if max_age.isdigit() else 100
-            return min_age <= age <= max_age
-        elif '+' in age_range:
-            min_age = int(age_range.replace('+', ''))
-            return age >= min_age
-        else:
-            return age == int(age_range)
-    except ValueError:
-        return False
 
 # Класс для управления статистикой
 class Stats:

@@ -17,7 +17,7 @@
 - [ ] Морфологический анализ
 - [ ] Анализ тональности ([dataset тонального словаря](https://github.com/dkulagin/kartaslov/tree/master/dataset/emo_dict))
 
-- [ ] изменить тематику
+- [x] изменить тематику
 
 
 ## Запуск
