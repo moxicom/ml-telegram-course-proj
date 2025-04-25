@@ -9,7 +9,7 @@ logger.info("Начинается обучение модели для dialogues
 # Загрузка dialogues.txt
 dialogues = []
 try:
-    with open('data/dialogues.txt', encoding='utf-8') as f:
+    with open('app/data/dialogues.txt', encoding='utf-8') as f:
         content = f.read()
     dialogues = [d.split('\n')[:2] for d in content.split('\n\n') if len(d.split('\n')) >= 2]
     dialogues = [(q[1:].strip() if q.startswith('-') else q, a[1:].strip() if a.startswith('-') else a) for q, a in dialogues]
