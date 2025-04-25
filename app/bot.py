@@ -3,17 +3,16 @@ import random
 import nltk
 import pickle
 import os
-import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import speech_recognition as sr
 from gtts import gTTS
 from pydub import AudioSegment
 from dotenv import load_dotenv
-from data.config import CONFIG
-from sklearn.feature_extraction.text import TfidfVectorizer
+from app.data.config import CONFIG
 from sklearn.metrics.pairwise import cosine_similarity
-from utils import clear_phrase, is_meaningful_text, extract_dish_name, extract_dish_category, extract_price, Stats, logger
+from utils import clear_phrase, is_meaningful_text, extract_dish_name, extract_dish_category, extract_price, Stats, \
+    logger, lemmatize_phrase
 
 # Загрузка токена
 load_dotenv()
@@ -43,7 +42,7 @@ except FileNotFoundError as e:
 
 # Классификация намерения
 def classify_intent(replica):
-    replica = clear_phrase(replica)
+    replica = lemmatize_phrase(replica)  # Используем лемматизированную фразу
     if not replica:
         return None
     vectorized = vectorizer.transform([replica])
@@ -52,7 +51,7 @@ def classify_intent(replica):
     best_intent = None
     for intent_key, data in CONFIG['intents'].items():
         for example in data.get('examples', []):
-            example = clear_phrase(example)
+            example = lemmatize_phrase(example)  # Лемматизируем примеры
             if not example:
                 continue
             distance = nltk.edit_distance(replica, example)
@@ -194,7 +193,7 @@ def generate_answer(replica, context):
     if similarities[best_idx] > 0.5:
         answer = answers[best_idx]
         logger.info(f"Found in dialogues.txt: replica='{replica}', answer='{answer}', similarity={similarities[best_idx]}")
-        if random.random() < 0.3:
+        if random.random() < 0.05:
             ad_dish = random.choice(list(CONFIG['dishes'].keys()))
             answer += f" Кстати, у нас есть {ad_dish} — очень вкусно!"
         context.user_data['last_intent'] = 'offtopic'

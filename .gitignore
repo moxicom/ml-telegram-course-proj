@@ -1,4 +1,5 @@
-data/dialogues.txt
+app/data/dialogues.txt
+models/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
