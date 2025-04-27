@@ -142,14 +142,14 @@ def get_answer_by_intent(intent, replica, context):
                 dishes = random.sample(list(CONFIG['dishes'].keys()), min(2, len(CONFIG['dishes'])))
                 answer = f"У нас есть {', '.join(dishes)}. Назови одно, чтобы узнать больше!"
             elif last_intent == 'offtopic':
-                answer = "Хорошо, давай продолжим! Хочешь узнать про блюда?"
+                answer = "Хорошо, давай продолжим! Но дай знать, если захочешь узнать что-нибудь о блюдах"
             else:
                 answer = "Хорошо, что интересует? Блюда, цены или что-то ещё?"
 
         elif intent == 'no':
             context.user_data['current_dish'] = None
             context.user_data['state'] = 'NONE'
-            answer = "Хорошо, какое блюдо обсудим теперь?"
+            answer = "Хорошо, давайте продолжим диалог"
 
         elif intent == 'filter_dishes':
             if price:
