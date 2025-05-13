@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from app.data.config import CONFIG
 from sklearn.metrics.pairwise import cosine_similarity
 from utils import clear_phrase, is_meaningful_text, extract_dish_name, extract_dish_category, extract_price, Stats, \
-    logger, lemmatize_phrase
+    logger, lemmatize_phrase, analyze_sentiment
 
 # Загрузка токена
 load_dotenv()
@@ -197,6 +197,11 @@ def generate_answer(replica, context):
             ad_dish = random.choice(list(CONFIG['dishes'].keys()))
             answer += f" Кстати, у нас есть {ad_dish} — очень вкусно!"
         context.user_data['last_intent'] = 'offtopic'
+        sentiment = analyze_sentiment(replica)
+        if sentiment == 'positive':
+            answer += " Рад, что вы в хорошем настроении!"
+        elif sentiment == 'negative':
+            answer += " Кажется, вы не в духе. Я думаю, блюда в ресторане поднимут настроение?"
         return answer
     logger.info(f"No match in dialogues.txt for replica='{replica}'")
     return None

@@ -21,6 +21,20 @@ morph_vocab = MorphVocab()
 emb = NewsEmbedding()
 morph_tagger = NewsMorphTagger(emb)
 
+def load_tonal_dict():
+    tonal_dict = {}
+    try:
+        with open('data/tonal_dict.txt', encoding='utf-8') as f:
+            for line in f:
+                word, score = line.strip().split('\t')
+                tonal_dict[word] = float(score)
+    except FileNotFoundError:
+        logger.error("Файл tonal_dict.txt не найден")
+    return tonal_dict
+
+
+TONAL_DICT = load_tonal_dict()
+
 # Очистка фразы (оставляем как есть)
 def clear_phrase(phrase):
     if not phrase:
@@ -57,6 +71,27 @@ def lemmatize_phrase(phrase):
     # print(res)
 
     return res
+
+# Анализ тональности
+def analyze_sentiment(phrase):
+    if not phrase:
+        return 'neutral'
+    lemmatized = lemmatize_phrase(phrase)
+    words = lemmatized.split()
+    sentiment_score = 0
+    count = 0
+    for word in words:
+        if word in TONAL_DICT:
+            sentiment_score += TONAL_DICT[word]
+            count += 1
+    if count == 0:
+        return 'neutral'
+    avg_score = sentiment_score / count
+    if avg_score > 0.3:
+        return 'positive'
+    elif avg_score < -0.3:
+        return 'negative'
+    return 'neutral'
 
 # Проверка на осмысленность текста
 def is_meaningful_text(text):
