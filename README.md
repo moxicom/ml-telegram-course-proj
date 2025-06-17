@@ -14,9 +14,9 @@
     - [x] Анализирует контекст переписки
     - [x] Фильтрация по цене и полу
 
-- [ ] Лемматизация (natasha)
-- [ ] Морфологический анализ (вроде тоже natasha)
-- [ ] Анализ тональности ([dataset тонального словаря](https://github.com/dkulagin/kartaslov/tree/master/dataset/emo_dict))
+- [x] Лемматизация (natasha)
+- [x] Морфологический анализ (вроде тоже natasha)
+- [x] Анализ тональности ([dataset тонального словаря](https://github.com/dkulagin/kartaslov/tree/master/dataset/emo_dict))
 
 - [x] изменить тематику
 
